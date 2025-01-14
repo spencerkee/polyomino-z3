@@ -1,11 +1,14 @@
 from z3 import *
 from pprint import pprint
+import time
 
+set_param(verbose=2)
+# set_param('parallel.enable', True)
 POW = [1e8, 1e7, 1e6, 1e5, 1e4, 1e3, 1e2, 1e1, 1e0]
 POW = [int(i) for i in POW]
 
 
-# First we create an Integer Variable for each cell of the Sudoku grid.
+# First we create an Integer variable for each cell of the Sudoku grid.
 X = [[Int("x_%s_%s" % (i + 1, j + 1)) for j in range(9)] for i in range(9)]
 excluded_digit = Int("excluded")
 
@@ -25,7 +28,8 @@ rows_c = [Distinct(X[i] + [excluded_digit]) for i in range(9)]
 
 # Every digit has to be placed exactly once in each column
 
-cols_c = [Distinct([X[i][j] for i in range(9)] + [excluded_digit]) for j in range(9)]
+cols_c = [Distinct([X[i][j] for i in range(9)] + [excluded_digit])
+          for j in range(9)]
 # Every digit has to be placed exactly once in each 3x3 subgrid
 
 sq_c = [
@@ -55,16 +59,23 @@ def create_number(number_var, num_list):
 
 
 divisor = Int("divisor")
+# Because we know 9 is valid and answer must be odd
+divisor_c = [divisor > 10]
 numbers = [Int(f"num_{i}") for i in range(9)]
 # Each constructed number is equal to the dot product of its row
 numbers_dot_c = [create_number(numbers[ind], row) for ind, row in enumerate(X)]
 # Each number is divisible by the divisor
 numbers_div_c = [number % divisor == 0 for number in numbers]
+# Divisor is odd
+divisor_odd_c = [divisor % 2 == 1]
+# Divisor is less than (or equal to?) 109739369
+divisor_lt_c = [divisor <= 109739369]
 
 # numbers_c = [create_number(divisor, row, f"num_{ind}") for ind, row in enumerate(X)]
 
 sudoku_c = (
-    excluded_digit_c + cells_c + rows_c + cols_c + sq_c + numbers_dot_c + numbers_div_c
+    excluded_digit_c + cells_c + rows_c + cols_c + sq_c + numbers_dot_c +
+    numbers_div_c + divisor_c + divisor_odd_c + divisor_lt_c
 )
 
 # instance = (
@@ -102,8 +113,8 @@ instance_c = [
 s = Optimize()
 s.add(sudoku_c + instance_c)
 s.maximize(divisor)
-
-if s.check() == sat:
+start_time = time.time()
+while s.check() == sat:
     m = s.model()
     r = [[m.evaluate(X[i][j]) for j in range(9)] for i in range(9)]
     print_matrix(r)
@@ -111,7 +122,14 @@ if s.check() == sat:
     # print([m.evaluate(i) for i in digits])
     for n in numbers:
         print(m.evaluate(n))
-    print(m.evaluate(divisor))
+
+    print(f"elapsed={time.time() - start_time}")
+    print(f"divisor={m.evaluate(divisor)}")
+    with open("answers.txt", "a") as f:
+        f.write(f"elapsed={time.time() - start_time}\n")
+        f.write(f"divisor={m.evaluate(divisor)}\n")
+    s.add(divisor > m.evaluate(divisor))
+    s.add(divisor <= (987654321 // m.evaluate(divisor).as_long()))
 else:
     print("failed to solve")
 
@@ -120,4 +138,32 @@ else:
 The "digits" are 9 integer variables which are unique, and 0-9
 Each row, column, square only contains unique digits
 Evaluate the 9 digit number formed by each row
+"""
+
+"""
+[[3, 0, 4, 1, 8, 5, 7, 2, 6],
+ [1, 8, 6, 7, 2, 3, 4, 0, 5],
+ [7, 2, 5, 6, 4, 0, 1, 3, 8],
+ [6, 7, 0, 3, 1, 4, 8, 5, 2],
+ [2, 5, 8, 0, 6, 7, 3, 4, 1],
+ [4, 1, 3, 2, 5, 8, 0, 6, 7],
+ [8, 4, 7, 5, 0, 6, 2, 1, 3],
+ [5, 3, 1, 4, 7, 2, 6, 8, 0],
+ [0, 6, 2, 8, 3, 1, 5, 7, 4]]
+9
+304185726
+186723405
+725640138
+670314852
+258067341
+413258067
+847506213
+531472680
+62831574
+divisor=9
+elapsed=24.737561225891113
+
+987654321/3=329218107
+987654321/9=109739369 # Since 9 is a solution
+
 """
