@@ -1,0 +1,3 @@
+# Contains requirements common to all environments
+z3==0.2.0
+z3_solver==4.13.4.0
