@@ -1,0 +1,21 @@
+{
+    "image": "mcr.microsoft.com/devcontainers/python:3.12",
+    "hostRequirements": {
+      "cpus": 4
+    },
+    "waitFor": "onCreateCommand",
+    // "onCreateCommand": "python -m ensurepip --upgrade",
+    "updateContentCommand": "python3 -m pip install -r requirements/dev.txt",
+    // "postCreateCommand": "python -m ensurepip --upgrade && python -m pip install --upgrade setuptools && python -m pip install -r requirements/dev.txt",
+    "customizations": {
+      "codespaces": {
+        "openFiles": []
+      },
+      "vscode": {
+        "extensions": [
+          "ms-toolsai.jupyter",
+          "ms-python.python"
+        ]
+      }
+    }
+  }
